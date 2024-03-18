@@ -25,15 +25,9 @@ typedef struct inst {
     int imm;
     int option;
     int shift;
-    int cmp;
     // Agregar la función misma que vamos a usar en el execute() en vez de tener que leer uno por uno los opcodes hardcodeados para determinar la operacion
 
 } inst_t;
-
-// FALTA HALT CUYO OPCODE DESCONOCEMOS---------------------------------------
-// FALTA BR Y CONDITIONAL BRANCH CUYOS OPCODES DESCONOCEMOS
-// ANDS IMMEDIATE NO ESTÁ PORQUE SU OPCODE MIDE 8 BITS
-// EL OPCODE DE EXCEPTION GENERATION MIDE 3?? QUÉ SON ESOS BITS DEL PRINCIPIO ENTONCES??
 
 inst_t decode(int inst) { // Esto debería devolver un puntero
     inst_t decoded;
@@ -44,73 +38,44 @@ inst_t decode(int inst) { // Esto debería devolver un puntero
     int three_mask = 0b111;
     int r_mask = 0b11111;
     int six_mask = 0b111111;
-    int twelve_mask = 0b111111111111;
-    int op_mask = 0b01111111 << 24; // no todas las instrucciones tienen este opcode, cuidado. Va a haber que implementar una funcion o un bloque de codigo que lea de izquierda a derecha y vaya detecte el opcode de una instrucción
+    int op_mask = 0b01111111 << 24; // no todas las instrucciones tienen este opcode, cuidado.
 
     decoded.opcode = (inst & op_mask) >> 24;
 
-    if (decoded.opcode == 0b0101011 || 0b0110001 || 0b1101011 || 0b1110001 || 0b1101010 || 0b1001010 || 0b0101010) { // Cualquier instrucción que use Rn y Rd con opcode de 7 bits
+    if (decoded.opcode == 0b0101011 || 0b011001) { // Cualquier instrucción que use Rn y Rd
         decoded.rn = (inst & (r_mask << 5)) >> 5;
         decoded.rd = (inst & r_mask);
-
-        if (decoded.rd == 31) decoded.cmp = 1; else decoded.cmp = 0;
-
-        if (decoded.opcode == 0b0101011 || 0b1101011 || 0b1101010 || 0b1001010 || 0b0101010) { // Cualquier instrucción que use Rm
-            decoded.rm = (inst & (r_mask << 16)) >> 16;
-        }
-
-        if (inst & (bit_mask << 21) == 1) { // Para diferenciar entre instrucciones extended y shifted register
+        if (inst & (bit_mask << 21) == 1) {
             ext_or_shift = 'e';
         }
-        else ext_or_shift = 's';        
-        
-        if (decoded.opcode == 0b0101011 || 0b1101011 || 0b1101010 || 0b1001010 || 0b0101010 && ext_or_shift == 's') { // Cualquier instrucción que use shift y tenga el bit 21 = 0
-            decoded.shift = (inst & (two_mask << 22)) >> 22;
-        }
-
-        if (decoded.opcode == 0b0110001 || 0b1110001) { // Cualquier instrucción que use shift independientemente del bit 21
-            decoded.shift = (inst & (two_mask << 22)) >> 22;
-        }
-
-        if (decoded.opcode == 0b0101011 || 0b1101011 && ext_or_shift == 'e') { // Cualquier instrucción que use imm3
-            decoded.imm = (inst & (three_mask << 10)) >> 10;
-        }
-
-        else if (decoded.opcode == 0b0101011 || 0b1101011 || 0b1101010 || 0b1001010 || 0b0101010 && ext_or_shift == 's') { // Cualquier instrucción que use imm6
-            decoded.imm = (inst & (six_mask << 10)) >> 10;
-        }
-
-        if (decoded.opcode == 0b0110001 || 0b1110001) { // Cualquier instrucción que use imm12
-            decoded.imm = (inst & (twelve_mask << 10)) >> 10;
-        }
-
-        if (decoded.opcode == 0b0101011 || 0b1101011 && ext_or_shift == 'e') { // Cualquier instrucción que use option
-            decoded.option = (inst & (three_mask << 13)) >> 13;
-        }
-    
+        else ext_or_shift = 's';
     }
 
     if (decoded.opcode == 0b0101011 && ext_or_shift == 'e') { // ADDS (extended register)
+        int r_mask = 0b11111;
         decoded.rm = (inst & (r_mask << 16)) >> 16;
+        int three_mask = 0b111;
         decoded.imm = (inst & (three_mask << 10)) >> 10;
         decoded.option = (inst & (three_mask << 13)) >> 13;
+
         // decoded.operation = funcion o lo que poronga sea
+
         return decoded;
     }
     
     if (decoded.opcode == 0b0110001) { // ADDS (immediate)
-        decoded.imm = (inst & (twelve_mask << 10)) >> 10;
-        return decoded;
+        int imm_mask = 0b111111111111;
+        int shift_mask = 0b11;
+        decoded.imm = (inst & (imm_mask << 10)) >> 10;
+        decoded.shift = (inst & (shift_mask << 22)) >> 22;
     }
 
-    if (decoded.opcode == 0b0101011 && ext_or_shift == 's') { // ADDS (shifted register)
+    if (decoded.opcode == 0b0101011 && ext_or_shift == 's') {
+        int r_mask = 0b11111;
+        int imm_mask = 0b111111;
+        int 
         decoded.rm = (inst & (r_mask << 16)) >> 16;
-        decoded.imm = (inst & (six_mask << 10)) >> 10;
-        return decoded;
-    }
-
-    if (decoded.opcode == 0b1101011) { // SUBS (extended register)
-        decoded.rm = (inst & (r_mask << 16)) >> 16;
+        decoded.imm = (inst & (imm_mask << 10)) >> 10;
     }
 
 

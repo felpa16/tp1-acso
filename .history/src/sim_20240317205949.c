@@ -31,9 +31,7 @@ typedef struct inst {
 } inst_t;
 
 // FALTA HALT CUYO OPCODE DESCONOCEMOS---------------------------------------
-// FALTA BR Y CONDITIONAL BRANCH CUYOS OPCODES DESCONOCEMOS
 // ANDS IMMEDIATE NO ESTÁ PORQUE SU OPCODE MIDE 8 BITS
-// EL OPCODE DE EXCEPTION GENERATION MIDE 3?? QUÉ SON ESOS BITS DEL PRINCIPIO ENTONCES??
 
 inst_t decode(int inst) { // Esto debería devolver un puntero
     inst_t decoded;
@@ -76,7 +74,7 @@ inst_t decode(int inst) { // Esto debería devolver un puntero
             decoded.imm = (inst & (three_mask << 10)) >> 10;
         }
 
-        else if (decoded.opcode == 0b0101011 || 0b1101011 || 0b1101010 || 0b1001010 || 0b0101010 && ext_or_shift == 's') { // Cualquier instrucción que use imm6
+        else if (decoded.opcode == 0b0101011 || 0b1101011 || 0b1101010 || 0b1001010 && ext_or_shift == 's') { // Cualquier instrucción que use imm6
             decoded.imm = (inst & (six_mask << 10)) >> 10;
         }
 

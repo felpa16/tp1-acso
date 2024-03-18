@@ -31,9 +31,6 @@ typedef struct inst {
 } inst_t;
 
 // FALTA HALT CUYO OPCODE DESCONOCEMOS---------------------------------------
-// FALTA BR Y CONDITIONAL BRANCH CUYOS OPCODES DESCONOCEMOS
-// ANDS IMMEDIATE NO ESTÁ PORQUE SU OPCODE MIDE 8 BITS
-// EL OPCODE DE EXCEPTION GENERATION MIDE 3?? QUÉ SON ESOS BITS DEL PRINCIPIO ENTONCES??
 
 inst_t decode(int inst) { // Esto debería devolver un puntero
     inst_t decoded;
@@ -49,13 +46,13 @@ inst_t decode(int inst) { // Esto debería devolver un puntero
 
     decoded.opcode = (inst & op_mask) >> 24;
 
-    if (decoded.opcode == 0b0101011 || 0b0110001 || 0b1101011 || 0b1110001 || 0b1101010 || 0b1001010 || 0b0101010) { // Cualquier instrucción que use Rn y Rd con opcode de 7 bits
+    if (decoded.opcode == 0b0101011 || 0b0110001 || 0b1101011 || 0b1110001 || 0b1101010) { // Cualquier instrucción que use Rn y Rd
         decoded.rn = (inst & (r_mask << 5)) >> 5;
         decoded.rd = (inst & r_mask);
 
         if (decoded.rd == 31) decoded.cmp = 1; else decoded.cmp = 0;
 
-        if (decoded.opcode == 0b0101011 || 0b1101011 || 0b1101010 || 0b1001010 || 0b0101010) { // Cualquier instrucción que use Rm
+        if (decoded.opcode == 0b0101011 || 0b1101011) { // Cualquier instrucción que use Rm
             decoded.rm = (inst & (r_mask << 16)) >> 16;
         }
 
@@ -64,7 +61,7 @@ inst_t decode(int inst) { // Esto debería devolver un puntero
         }
         else ext_or_shift = 's';        
         
-        if (decoded.opcode == 0b0101011 || 0b1101011 || 0b1101010 || 0b1001010 || 0b0101010 && ext_or_shift == 's') { // Cualquier instrucción que use shift y tenga el bit 21 = 0
+        if (decoded.opcode == 0b0101011 || 0b1101011 || 0b1101010 && ext_or_shift == 's') { // Cualquier instrucción que use shift y tenga el bit 21 = 0
             decoded.shift = (inst & (two_mask << 22)) >> 22;
         }
 
@@ -76,7 +73,7 @@ inst_t decode(int inst) { // Esto debería devolver un puntero
             decoded.imm = (inst & (three_mask << 10)) >> 10;
         }
 
-        else if (decoded.opcode == 0b0101011 || 0b1101011 || 0b1101010 || 0b1001010 || 0b0101010 && ext_or_shift == 's') { // Cualquier instrucción que use imm6
+        else if (decoded.opcode == 0b0101011 || 0b1101011 && ext_or_shift == 's') { // Cualquier instrucción que use imm6
             decoded.imm = (inst & (six_mask << 10)) >> 10;
         }
 

@@ -47,7 +47,7 @@ inst_t decode(int inst) { // Esto debería devolver un puntero
     int twelve_mask = 0b111111111111;
     int op_mask = 0b01111111 << 24; // no todas las instrucciones tienen este opcode, cuidado. Va a haber que implementar una funcion o un bloque de codigo que lea de izquierda a derecha y vaya detecte el opcode de una instrucción
 
-    decoded.opcode = (inst & op_mask) >> 24;
+    decoded.opcode = (inst & op_mask) >> 24;a
 
     if (decoded.opcode == 0b0101011 || 0b0110001 || 0b1101011 || 0b1110001 || 0b1101010 || 0b1001010 || 0b0101010) { // Cualquier instrucción que use Rn y Rd con opcode de 7 bits
         decoded.rn = (inst & (r_mask << 5)) >> 5;
