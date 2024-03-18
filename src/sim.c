@@ -32,7 +32,7 @@ typedef struct inst {
 inst_t decode(int inst) { // Esto debería devolver un puntero
     inst_t decoded;
 
-    // Caso optcode en bits 30-24
+    // Caso optcode en bits 30-2
     int mask = 0b01111111 << 24; // no todas las instrucciones tienen este opcode, cuidado.
     decoded.opcode = (inst & mask) >> 24;
     if (decoded.opcode == 0b0101011) {
@@ -123,6 +123,7 @@ inst_t decode(int inst) { // Esto debería devolver un puntero
 
     return decoded;
 }
+}
 
 int inst = 0b10101011000101010101010010101010;
 
@@ -137,6 +138,9 @@ int main(void) {
 
     return 0;
 }
+}
+
+
 
 /* 
 El estado del CPU está modelado por la struct CPU_STATE. En este struct hay un vector de 32 enteros de 64 bits cada uno. Cada
