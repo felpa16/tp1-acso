@@ -25,6 +25,7 @@ typedef struct inst {
     int opcode;
     int imm;
     int option;
+    int shift;
     // Agregar la función misma que vamos a usar en el execute() en vez de tener que leer uno por uno los opcodes hardcodeados para determinar la operacion
 
 } inst_t;
@@ -32,18 +33,67 @@ typedef struct inst {
 inst_t decode(int inst) { // Esto debería devolver un puntero
     inst_t decoded;
 
-    // Caso optcode en bits 30-2
-    int mask = 0b01111111 << 24; // no todas las instrucciones tienen este opcode, cuidado.
+    // Caso optcode en bits 30-24
+    int mask = 0b01111111 << 24; 
     decoded.opcode = (inst & mask) >> 24;
-    if (decoded.opcode == 0b0101011) {
+
+    // Check ADDS IMMEDIATE
+    if (decoded.opcode == 0b0110001) {
         int r_mask = 0b11111;
-        decoded.rm = (inst & (r_mask << 16)) >> 16;
-        decoded.rn = (inst & (r_mask << 5)) >> 5;
         decoded.rd = (inst & r_mask);
-        
+        decoded.rn = (inst & (r_mask << 5)) >> 5;
+        int shift_mask = 0b1 << 22;
+        decoded.shift = (inst & shift_mask) >> 22;
+        int imm_mask = 0b111111111111 << 10;
+        decoded.imm = (inst & imm_mask) >> 10;
+
+        // decoded.operation = funcion o lo que poronga sea
+
+        return decoded;
+    }
+    // Check SUBS IMMEDIATE
+    if (decoded.opcode == 0b1110001) {
+        int r_mask = 0b11111;
+        decoded.rd = (inst & r_mask);
+        decoded.rn = (inst & (r_mask << 5)) >> 5;
+        int shift_mask = 0b1 << 22;
+        decoded.shift = (inst & shift_mask) >> 22;
+        int imm_mask = 0b111111111111 << 10;
+        decoded.imm = (inst & imm_mask) >> 10;
+
+        // decoded.operation = funcion o lo que poronga sea
+
+        return decoded;
+    }
+
+
+    // Caso optcode en bits 30-21
+    int mask30_21 = 0b01111111111 << 21;
+    decoded.opcode = (inst & mask30_21) >> 21;
+
+    // Check ADDS ER
+    if (decoded.opcode == 0b0101011001) {
+        int r_mask = 0b11111;
+        decoded.rd = (inst & r_mask);
+        decoded.rn = (inst & (r_mask << 5)) >> 5;
+        decoded.rm = (inst & (r_mask << 16)) >> 16;
         int three_mask = 0b111;
-        decoded.imm = (inst & (three_mask << 10)) >> 10;
         decoded.option = (inst & (three_mask << 13)) >> 13;
+        decoded.imm = (inst & (three_mask << 10)) >> 10;
+
+        // decoded.operation = funcion o lo que poronga sea
+
+        return decoded;
+    }
+    // Check SUBS ER
+    if (decoded.opcode == 0b1101011001) {
+        int r_mask = 0b11111;
+        decoded.rd = (inst & r_mask);
+        decoded.rn = (inst & (r_mask << 5)) >> 5;
+        decoded.rm = (inst & (r_mask << 16)) >> 16;
+        int three_mask = 0b111;
+        decoded.option = (inst & (three_mask << 13)) >> 13;
+        decoded.imm = (inst & (three_mask << 10)) >> 10;
 
         // decoded.operation = funcion o lo que poronga sea
 
@@ -53,12 +103,29 @@ inst_t decode(int inst) { // Esto debería devolver un puntero
     // Caso optcode en bits 30-23
     int mask30_23 = 0b011111111 << 23;
     decoded.opcode = (inst & mask30_23) >> 23;
+
     // Check MOVZ operation
     if (decoded.opcode == 0b10100101) {
         int r_mask = 0b11111;
         decoded.rd = (inst & r_mask);
         int imm_mask = 0b1111111111111111 << 5;
         decoded.imm = (inst & imm_mask) >> 5;
+        return decoded;
+    }
+    // Check LSL/LSR
+    if (decoded.opcode == 0b10100110) {
+        int r_mask = 0b11111;
+        decoded.rd = (inst & r_mask);
+        decoded.rn =(inst & (r_mask << 5)) >> 5;
+        int imm_mask = 0b111111 << 16;
+        decoded.imm = (inst & imm_mask) >> 16;
+        int variant_mask = 0b011111 << 10;
+        int variant = (inst & variant_mask) >> 10;
+        if (variant == 0b11111){
+            // implement RIGHT shift logic
+        } else {
+            // implement LEFT shift logic
+        }
         return decoded;
     }
 
@@ -73,8 +140,14 @@ inst_t decode(int inst) { // Esto debería devolver un puntero
         int imm_mask = 0b111111111 << 12;
         decoded.imm = (inst & imm_mask) >> 12;
         int variant_mask = 0b11 << 30;
-        int variant = variant_mask & inst;
-        if (variant == 0b11){}else if (variant == 0b10) {} else if (variant ==0b00){} else if (variant == 0b01){} // IMPLEMENTAR LOGICA DE LAS VARIANTES
+        int variant = (variant_mask & inst) >> 30;
+        if (variant == 0b11){
+            // Implement LDUR
+        } else if (variant ==0b00){
+            // Implement LDURB
+        } else if (variant == 0b01){
+            // Implement LDURH
+        }
         return decoded;
     }
     // Check STUR/STURB/STURH operations
@@ -86,27 +159,15 @@ inst_t decode(int inst) { // Esto debería devolver un puntero
         decoded.imm = (inst & imm_mask) >> 12;
         int variant_mask = 0b11 << 30;
         int variant = (variant_mask & inst) >> 30;
-        if (variant == 0b11){}else if (variant == 0b10) {} else if (variant ==0b00){} else if (variant == 0b01){} // IMPLEMENTAR LOGICA DE LAS VARIANTES
+        if (variant == 0b11){
+            // Implement STUR
+        }else if (variant == 0b10) {
+            // Implement STURB
+        } else if (variant ==0b00){
+            // Implement STURH
+        } else if (variant == 0b01){}
         return decoded;
     }
-
-    // Caso optcode en bits 27-20
-    int mask27_20 = 0b000011111111 << 20;
-    decoded.opcode = (inst & mask27_20) >> 20;
-    // Check LSL/LSR
-    if (decoded.opcode == 0b00011010) {
-        int r_mask = 0b1111;
-        decoded.rm = (inst & r_mask);
-        decoded.rd =(inst & (r_mask << 12)) >> 12;
-        int imm_mask = 0b11111 << 12;
-        decoded.imm = (inst & imm_mask) >> 12;
-         int variant_mask = 0b11 << 5;
-        int variant = (variant_mask & inst) >> 5;
-        if (variant == 0b00){}else if (variant == 0b01) {}  // IMPLEMENTAR LOGICA DE LAS VARIANTES RIGHT Y LEFT
-
-        return decoded;
-    }
-
 
     // Caso optcode en bits 31-24
     int mask = 0b11111111 << 24; 
@@ -123,6 +184,18 @@ inst_t decode(int inst) { // Esto debería devolver un puntero
 
     return decoded;
 }
+
+    // Caso optcode en bits 31-21
+    int mask30_21 = 0b11111111111 << 21;
+    decoded.opcode = (inst & mask30_23) >> 21;
+    // HALT o HLT
+    if (decoded.opcode == 0b11010100010) {
+
+        // setear nombre de la function a HALT o algo asi
+
+        return decoded;
+}
+
 }
 
 int inst = 0b10101011000101010101010010101010;
