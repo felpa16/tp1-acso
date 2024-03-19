@@ -171,33 +171,24 @@ void st(int rt, int rn, int variant) {
 
     if (variant == 0b01) { // STURH (2 bytes)
         uint32_t hw_ld = (uint32_t) ((CURRENT_STATE[rt] << 48) >> 48);
-        uint32_t hw_mem = (uint32_t) ((mem_read_32(rn) >> 16) << 16);
-        mem_write_32(rn, hw_ld + hw_mem); // no sé si estoy almacenando bien acá o si entra en juego little endian.
-    }
-    else if (variant == 0b00) { // STURB (1 byte)
-        uint32_t hw_ld = (uint32_t) ((CURRENT_STATE[rt] << 56) >> 56);
-        uint32_t hw_mem = (uint32_t) ((mem_read_32(rn) >> 24) << 24);
-        mem_write_32(rn, hw_ld + hw_mem);
-    }
-    else if (variant == 0b11 || 0b10) { // STUR (4 bytes)
-        uint32_t hw_ld = (uint32_t) ((CURRENT_STATE[rt] << 32) >> 32);
-        mem_write_32(rn, hw_ld); 
+        uint32_t hw_mem = (uint32_t) ((mem_read_32(rn)))
+        mem_write_32(rn, value); // no sé si estoy almacenando bien acá o si entra en juego little endian.
     }
 }
 
 int inst = 0b10101011000101010101010010101010;
 
-// int main(void) {
-//     inst_t i_prueba = decode(inst);
-//     printf("%d\n", i_prueba.opcode);
-//     printf("%d\n", i_prueba.rm);
-//     printf("%d\n", i_prueba.rn);
-//     printf("%d\n", i_prueba.rd);
-//     printf("%d\n", i_prueba.imm);
-//     printf("%d\n", i_prueba.option);
+int main(void) {
+    inst_t i_prueba = decode(inst);
+    printf("%d\n", i_prueba.opcode);
+    printf("%d\n", i_prueba.rm);
+    printf("%d\n", i_prueba.rn);
+    printf("%d\n", i_prueba.rd);
+    printf("%d\n", i_prueba.imm);
+    printf("%d\n", i_prueba.option);
 
-//     return 0;
-// }
+    return 0;
+}
 
 /* 
 El estado del CPU está modelado por la struct CPU_STATE. En este struct hay un vector de 32 enteros de 64 bits cada uno. Cada

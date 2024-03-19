@@ -187,17 +187,17 @@ void st(int rt, int rn, int variant) {
 
 int inst = 0b10101011000101010101010010101010;
 
-// int main(void) {
-//     inst_t i_prueba = decode(inst);
-//     printf("%d\n", i_prueba.opcode);
-//     printf("%d\n", i_prueba.rm);
-//     printf("%d\n", i_prueba.rn);
-//     printf("%d\n", i_prueba.rd);
-//     printf("%d\n", i_prueba.imm);
-//     printf("%d\n", i_prueba.option);
+int main(void) {
+    inst_t i_prueba = decode(inst);
+    printf("%d\n", i_prueba.opcode);
+    printf("%d\n", i_prueba.rm);
+    printf("%d\n", i_prueba.rn);
+    printf("%d\n", i_prueba.rd);
+    printf("%d\n", i_prueba.imm);
+    printf("%d\n", i_prueba.option);
 
-//     return 0;
-// }
+    return 0;
+}
 
 /* 
 El estado del CPU está modelado por la struct CPU_STATE. En este struct hay un vector de 32 enteros de 64 bits cada uno. Cada

@@ -1,0 +1,1 @@
+En la instrucción LDURB, por ejemplo, nos piden guardar 56 ceros ylos primeros 8 bits

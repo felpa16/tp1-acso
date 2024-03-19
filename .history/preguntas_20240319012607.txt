@@ -1,0 +1,5 @@
+Preguntar si tengo bien implementadas las funciones de load (si me estoy guardando todos ceros y los primeros 8/16/64 bits)
+
+No sé si en load me estoy guardando los primeros bits o los últimos
+
+No sé si en store entra en juego little endian. Yo solo usé la función mem_write_32.

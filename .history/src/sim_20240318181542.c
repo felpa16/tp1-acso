@@ -29,10 +29,8 @@ typedef struct inst {
 
 } inst_t;
 
-inst_t decode() { // Esto debería devolver un puntero
+inst_t decode(int inst) { // Esto debería devolver un puntero
     inst_t decoded;
-
-    uint32_t inst = mem_read_32(CURRENT_STATE.PC);
 
     // Caso optcode en bits 30-2
     int mask = 0b01111111 << 24; // no todas las instrucciones tienen este opcode, cuidado.
@@ -134,70 +132,27 @@ CPU_State execute(inst_t decoded) {
     else if (decoded.opcode == 0b10100101) {
         movz(decoded.imm, decoded.rd);
     }
-    else if (decoded.opcode == 0b111000010) {
-        ld(decoded.rt, decoded.rn, decoded.variant);
-    }
-
-    NEXT_STATE.PC = CURRENT_STATE.PC += 1;
 }
 
 void adds_ext_r(int rm, int option, int imm3, int rn, int rd) {
-    NEXT_STATE.REGS[rd] = (CURRENT_STATE.REGS[rm] + CURRENT_STATE.REGS[rn]) << option * imm3; // puede ser que no haya que shiftear nada
+    NEXT_STATE.REGS[rd] = (NEXT_STATE.REGS[rm] + NEXT_STATE.REGS[rn]) << option * imm3; // puede ser que no haya que shiftear nada
     if (NEXT_STATE.REGS[rd] == 0) NEXT_STATE.FLAG_Z = 1;
     else if (NEXT_STATE.REGS[rd] < 0) NEXT_STATE.FLAG_N = 1;
 }
 
-void movz(int imm, int rd) {
-    NEXT_STATE.REGS[rd] = (int64_t) imm;
-}
-
-void ld(int rt, int rn, int variant) {
-
-    if (variant == 0b01) { //LDURH
-        int64_t value = (int64_t) ((mem_read_32(rn) << 24) >> 24); // no entiendo si acá me estoy quedando con los primeros 8 o los últimos 8
-        NEXT_STATE.REGS[rt] = value;
-    }
-    else if (variant == 0b00) { //LDURB
-        int64_t value = (int64_t) ((mem_read_32(rn) << 16) >> 16);
-        NEXT_STATE.REGS[rt] = value;
-    }
-    else if (variant == 0b10 || 0b11) { //LDUR
-        int64_t value = (int64_t) mem_read_32(rn);
-        NEXT_STATE.REGS[rt] = value;
-    }
-}
-
-void st(int rt, int rn, int variant) {
-
-    if (variant == 0b01) { // STURH (2 bytes)
-        uint32_t hw_ld = (uint32_t) ((CURRENT_STATE[rt] << 48) >> 48);
-        uint32_t hw_mem = (uint32_t) ((mem_read_32(rn) >> 16) << 16);
-        mem_write_32(rn, hw_ld + hw_mem); // no sé si estoy almacenando bien acá o si entra en juego little endian.
-    }
-    else if (variant == 0b00) { // STURB (1 byte)
-        uint32_t hw_ld = (uint32_t) ((CURRENT_STATE[rt] << 56) >> 56);
-        uint32_t hw_mem = (uint32_t) ((mem_read_32(rn) >> 24) << 24);
-        mem_write_32(rn, hw_ld + hw_mem);
-    }
-    else if (variant == 0b11 || 0b10) { // STUR (4 bytes)
-        uint32_t hw_ld = (uint32_t) ((CURRENT_STATE[rt] << 32) >> 32);
-        mem_write_32(rn, hw_ld); 
-    }
-}
-
 int inst = 0b10101011000101010101010010101010;
 
-// int main(void) {
-//     inst_t i_prueba = decode(inst);
-//     printf("%d\n", i_prueba.opcode);
-//     printf("%d\n", i_prueba.rm);
-//     printf("%d\n", i_prueba.rn);
-//     printf("%d\n", i_prueba.rd);
-//     printf("%d\n", i_prueba.imm);
-//     printf("%d\n", i_prueba.option);
+int main(void) {
+    inst_t i_prueba = decode(inst);
+    printf("%d\n", i_prueba.opcode);
+    printf("%d\n", i_prueba.rm);
+    printf("%d\n", i_prueba.rn);
+    printf("%d\n", i_prueba.rd);
+    printf("%d\n", i_prueba.imm);
+    printf("%d\n", i_prueba.option);
 
-//     return 0;
-// }
+    return 0;
+}
 
 /* 
 El estado del CPU está modelado por la struct CPU_STATE. En este struct hay un vector de 32 enteros de 64 bits cada uno. Cada

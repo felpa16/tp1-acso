@@ -1,0 +1,1 @@
+Preguntar si tengo bien implementadas las funciones de load (si me estoy guardando todos ceros y los primeros 8/16/64 bits)
