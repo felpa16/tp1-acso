@@ -4,19 +4,6 @@
 #include<stdlib.h>
 #include "shell.h"
 
-void process_instruction()
-{
-    /* execute one instruction here. You should use CURRENT_STATE and modify
-     * values in NEXT_STATE. You can call mem_read_32() and mem_write_32() to
-     * access memory. 
-     * 
-     * Sugerencia: hagan una funcion para decode()
-     *             y otra para execute()
-     * 
-     * */
-
-}
-
 typedef struct inst {
     uint32_t rm;
     uint32_t rn;
@@ -30,6 +17,26 @@ typedef struct inst {
     // Agregar la función misma que vamos a usar en el execute() en vez de tener que leer uno por uno los opcodes hardcodeados para determinar la operacion
 
 } inst_t;
+
+inst_t decode(uint32_t inst);
+void execute(inst_t decoded);
+
+
+void process_instruction()
+{
+    /* execute one instruction here. You should use CURRENT_STATE and modify
+     * values in NEXT_STATE. You can call mem_read_32() and mem_write_32() to
+     * access memory. 
+     * 
+     * Sugerencia: hagan una funcion para decode()
+     *             y otra para execute()
+     * 
+     * */
+    uint32_t curr_inst = mem_read_32(CURRENT_STATE.PC);
+    inst_t next_inst = decode (curr_inst);
+    execute(next_inst);
+
+}
 
 inst_t decode(uint32_t inst) { // Esto debería devolver un puntero
     inst_t decoded; //ESTO NO DEBERIA SER UN MALLOC?
@@ -258,42 +265,9 @@ inst_t decode(uint32_t inst) { // Esto debería devolver un puntero
         }
     }
     printf("No hay compatibilidad con ningun método\n");
+    return decoded;
 }
 
-uint32_t inst = 0b00110001010000000001000010000100;
-
-
-
-int main(void) {
-    inst_t i_prueba = decode(inst);
-    printf("Nombre del método: %s\n", i_prueba.method_name);
-    printf("RM: %d\n", i_prueba.rm);
-    printf("RN: %d\n", i_prueba.rn);
-    printf("RD: %d\n", i_prueba.rd);
-    printf("RT: %d\n", i_prueba.rt);
-    printf("IMM: %d\n", i_prueba.imm);
-    printf("OPTION: %d\n", i_prueba.option);
-    printf("SHIFT: %d\n", i_prueba.shift);
-    printf("VARIANT: %d\n", i_prueba.variant);
-
-    return 0;
-}
-
-CPU_State execute(inst_t decoded) {
-    if (strcmp(decoded.method_name, "adds_er") == 0) {
-        adds_ext_r(decoded.rm, decoded.option, decoded.imm, decoded.rn, decoded.rd);
-    }
-    else if (strcmp(decoded.method_name, "movz") == 0) {
-        movz(decoded.imm, decoded.rd);
-    }
-    else if (strcmp(decoded.method_name, "ldur") == 0) {
-        ld(decoded.rt, decoded.rn, decoded.variant);
-    }
-    else if (strcmp(decoded.method_name, "stur") == 0) {
-        st(decoded.rt, decoded.rn, decoded.variant);
-    }
-    NEXT_STATE.PC = CURRENT_STATE.PC += 1;
-}
 
 void adds_ext_r(int rm, int option, int imm3, int rn, int rd) {
     NEXT_STATE.REGS[rd] = (CURRENT_STATE.REGS[rm] + CURRENT_STATE.REGS[rn]) << option * imm3; // puede ser que no haya que shiftear nada
@@ -339,6 +313,39 @@ void st(int rt, int rn, int variant) {
     }
 }
 
+void execute(inst_t decoded) {
+    if (strcmp(decoded.method_name, "adds_er") == 0) {
+        adds_ext_r(decoded.rm, decoded.option, decoded.imm, decoded.rn, decoded.rd);
+    }
+    else if (strcmp(decoded.method_name, "movz") == 0) {
+        movz(decoded.imm, decoded.rd);
+    }
+    else if (strcmp(decoded.method_name, "ldur") == 0) {
+        ld(decoded.rt, decoded.rn, decoded.variant);
+    }
+    else if (strcmp(decoded.method_name, "stur") == 0) {
+        st(decoded.rt, decoded.rn, decoded.variant);
+    }
+    NEXT_STATE.PC = CURRENT_STATE.PC += 4;
+}
+
+
+uint32_t inst = 0b00110001010000000001000010000100;
+
+int main(void) {
+    inst_t i_prueba = decode(inst);
+    printf("Nombre del método: %s\n", i_prueba.method_name);
+    printf("RM: %d\n", i_prueba.rm);
+    printf("RN: %d\n", i_prueba.rn);
+    printf("RD: %d\n", i_prueba.rd);
+    printf("RT: %d\n", i_prueba.rt);
+    printf("IMM: %d\n", i_prueba.imm);
+    printf("OPTION: %d\n", i_prueba.option);
+    printf("SHIFT: %d\n", i_prueba.shift);
+    printf("VARIANT: %d\n", i_prueba.variant);
+
+    return 0;
+}
 
 /* 
 El estado del CPU está modelado por la struct CPU_STATE. En este struct hay un vector de 32 enteros de 64 bits cada uno. Cada
