@@ -165,13 +165,13 @@ inst_t decode(uint32_t inst) {
  }
 
  // Check SUBS ER / CMP ER
- if (opcode == 0b1101011001) {
+ if (opcode == 0b1101011000) {
  uint32_t r_mask = 0b11111;
  decoded.rd = (inst & r_mask);
  if (decoded.rd == 0b11111){
- strcpy(decoded.method_name, "subs_er");
- } else {
  strcpy(decoded.method_name, "cmp_er");
+ } else {
+ strcpy(decoded.method_name, "subs_er");
  }
  decoded.rn = (inst & (r_mask << 5)) >> 5;
  decoded.rm = (inst & (r_mask << 16)) >> 16;
@@ -295,11 +295,12 @@ void movz(int imm, int rd) {
 void ld(int rt, int rn, int variant) {
 
  if (variant == 0b01) { //LDURH
- int64_t value = (int64_t) ((mem_read_32(rn) << 16) >> 16); // no entiendo si acá me estoy quedando con los primeros 8 o los últimos 8
+ 
+ int64_t value = (int64_t) (mem_read_32(rn) & 0x00000000ffffffff);
  NEXT_STATE.REGS[rt] = value;
  }
  else if (variant == 0b00) { //LDURB
- int64_t value = (int64_t) ((mem_read_32(rn) << 24) >> 24);
+ int64_t value = (int64_t) (mem_read_32(rn) & 0x000000000000ffff);
  NEXT_STATE.REGS[rt] = value;
  }
  else if (variant == 0b10 || 0b11) { //LDUR
@@ -308,21 +309,29 @@ void ld(int rt, int rn, int variant) {
  }
 }
 
-void st(int rt, int rn, int variant) {
-
+void st(int rt, int rn, int variant, int imm) {
+ 
+ int64_t address = CURRENT_STATE.REGS[rn] + (int64_t)imm;
+ printf("address: %ld", address);
+ 
  if (variant == 0b01) { // STURH (2 bytes)
- uint32_t hw_ld = (uint32_t) ((NEXT_STATE.REGS[rt] >> 48) << 48);
- uint32_t hw_mem = (uint32_t) ((mem_read_32(rn) >> 16) << 16);
- mem_write_32(rn, hw_ld | hw_mem); // no sé si estoy almacenando bien acá o si entra en juego little endian.// HAY QUE HACER 2 WRITES, PORQUE ESTAS GUARDANDO 64 BITS. PRIMERO LOS MAS SIGNIFIC Y DESPUES LOS MENOS
+ uint32_t hw_ld = (uint32_t) (CURRENT_STATE.REGS[rt] & 0xffff);
+ uint32_t hw_mem = (uint32_t) (mem_read_32(address) & 0x0000ffff);
+ mem_write_32(CURRENT_STATE.REGS[rn] + imm, hw_ld | hw_mem); // no sé si estoy almacenando bien acá o si entra en juego little endian.// HAY QUE HACER 2 WRITES, PORQUE ESTAS GUARDANDO 64 BITS. PRIMERO LOS MAS SIGNIFIC Y DESPUES LOS MENOS
  }
  else if (variant == 0b00) { // STURB (1 byte)
- uint32_t hw_ld = (uint32_t) ((NEXT_STATE.REGS[rt] >> 56) << 56);
- uint32_t hw_mem = (uint32_t) ((mem_read_32(rn) >> 8) << 8);
- mem_write_32(rn, hw_ld | hw_mem);
+ uint32_t hw_ld = (uint32_t) (CURRENT_STATE.REGS[rt] & 0b11111111);
+ uint32_t hw_mem = (uint32_t) (mem_read_32(address) & 0x00ffffff);
+ mem_write_32(address, hw_ld | hw_mem);
  }
  else if (variant == 0b11 || variant == 0b10) { // STUR (4 bytes)
- uint32_t hw_ld = (uint32_t) NEXT_STATE.REGS[rt];
- mem_write_32(rn, hw_ld);
+ uint32_t most_sig = (CURRENT_STATE.REGS[rt] & (0xffffffff00000000)) >>32;
+ uint32_t less_sig = CURRENT_STATE.REGS[rt] & 0x00000000ffffffff;
+ printf("LESS SIG: %d\n", less_sig);
+ printf("RN: %d\n", rn);
+ 
+ mem_write_32(address, less_sig);
+ mem_write_32(address + 4, most_sig);
  }
 }
 
@@ -347,7 +356,7 @@ void adds_imm(int rn, int rd, int imm, int shift) {
 }
 
 void subs_er(int rm, int rn, int rd) {
- NEXT_STATE.REGS[rd] = (CURRENT_STATE.REGS[rm] - CURRENT_STATE.REGS[rn]); // puede ser que no haya que shiftear nada
+ NEXT_STATE.REGS[rd] = (CURRENT_STATE.REGS[rn] - CURRENT_STATE.REGS[rm]); // puede ser que no haya que shiftear nada
  if (NEXT_STATE.REGS[rd] == 0) { 
  NEXT_STATE.FLAG_Z = 1;
  NEXT_STATE.FLAG_N = 0;
@@ -361,11 +370,44 @@ void subs_er(int rm, int rn, int rd) {
  NEXT_STATE.FLAG_Z = 0;}
 }
 
+
+void cmp_ext_r(int rn, int rm) {
+ int64_t aux = CURRENT_STATE.REGS[rn] - CURRENT_STATE.REGS[rm];
+ if (aux == 0) {
+ NEXT_STATE.FLAG_Z = 1;
+ NEXT_STATE.FLAG_N = 0;
+ }
+ else if (aux < 0) {
+ NEXT_STATE.FLAG_N = 1; 
+ NEXT_STATE.FLAG_Z = 0;
+ }
+ else {
+ NEXT_STATE.FLAG_N = 0;
+ NEXT_STATE.FLAG_Z = 0;
+ }
+}
+
+void cmp_imm(int rn, int imm, int shift) {
+ int64_t aux = CURRENT_STATE.REGS[rn] - (imm << (12 * shift));
+ if (aux == 0) {
+ NEXT_STATE.FLAG_Z = 1;
+ NEXT_STATE.FLAG_N = 0;
+ }
+ else if (aux < 0) {
+ NEXT_STATE.FLAG_N = 1; 
+ NEXT_STATE.FLAG_Z = 0;
+ }
+ else {
+ NEXT_STATE.FLAG_N = 0;
+ NEXT_STATE.FLAG_Z = 0;
+ }
+}
+
 void eor(int rm, int rn, int rd) {
-    NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] ^ CURRENT_STATE.REGS[rm];
+ NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] ^ CURRENT_STATE.REGS[rm];
 }
 void orr(int rm, int rn, int rd) {
-    NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] | CURRENT_STATE.REGS[rm];
+ NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] | CURRENT_STATE.REGS[rm];
 }
 void ands_sr(int rm, int rn, int rd) {
  NEXT_STATE.REGS[rd] = (CURRENT_STATE.REGS[rm] & CURRENT_STATE.REGS[rn]); 
@@ -388,44 +430,44 @@ void br(int rn) {
  NEXT_STATE.PC = rn;
 }
 void lsl(int rn, int rd, int imm) {
-    NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] << imm; // FIJARSE QUE EN EL MAIL DICEN QUE EL SHIFT EN REALIDAD ES 64 - IMMR ???
+ NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] << (64-imm);
 }
 void lsr(int rn, int rd, int imm) {
-    NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] >> imm;
+ NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] >> imm;
 }
 void bcond(int imm, int variant) {
-    // BEQ
-    if (variant == 0b0000){
-        if (CURRENT_STATE.FLAG_Z == 1){
-            NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
-        }
-    // BNE
-    } else if (variant == 0b0001){
-        if (CURRENT_STATE.FLAG_Z == 0){
-            NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
-        }
-    // BGT
-    } else if (variant == 0b1100){
-        if ((CURRENT_STATE.FLAG_Z == 0) && (CURRENT_STATE.FLAG_N == 0)){
-            NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
-        }
-     // BLT
-    } else if (variant == 0b1011){
-        if (CURRENT_STATE.FLAG_N == 1){
-            NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
-        }
-    // BGE
-    } else if (variant == 0b1010){
-        if (CURRENT_STATE.FLAG_N == 0){
-            NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
-        }
-    // BLE
-    } else if (variant == 0b1101){
-        if (!((CURRENT_STATE.FLAG_Z == 0) && (CURRENT_STATE.FLAG_N == 0))){
-            NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
-        }
-    }
-    
+ // BEQ
+ if (variant == 0b0000){
+ if (CURRENT_STATE.FLAG_Z == 1){
+ NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
+ }
+ // BNE
+ } else if (variant == 0b0001){
+ if (CURRENT_STATE.FLAG_Z == 0){
+ NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
+ }
+ // BGT
+ } else if (variant == 0b1100){
+ if ((CURRENT_STATE.FLAG_Z == 0) && (CURRENT_STATE.FLAG_N == 0)){
+ NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
+ }
+ // BLT
+ } else if (variant == 0b1011){
+ if (CURRENT_STATE.FLAG_N == 1){
+ NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
+ }
+ // BGE
+ } else if (variant == 0b1010){
+ if (CURRENT_STATE.FLAG_N == 0){
+ NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
+ }
+ // BLE
+ } else if (variant == 0b1101){
+ if (!((CURRENT_STATE.FLAG_Z == 0) && (CURRENT_STATE.FLAG_N == 0))){
+ NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
+ }
+ }
+ 
 }
 
 void execute(inst_t decoded) {
@@ -433,13 +475,14 @@ void execute(inst_t decoded) {
  adds_ext_r(decoded.rm, decoded.option, decoded.imm, decoded.rn, decoded.rd);
  }
  else if (strcmp(decoded.method_name, "movz") == 0) {
+ //printf("Rd: %d, IMM: %d\n", decoded.rd, decoded.imm);
  movz(decoded.imm, decoded.rd);
  }
  else if (strcmp(decoded.method_name, "ldur") == 0) {
  ld(decoded.rt, decoded.rn, decoded.variant);
  }
  else if (strcmp(decoded.method_name, "stur") == 0) {
- st(decoded.rt, decoded.rn, decoded.variant);
+ st(decoded.rt, decoded.rn, decoded.variant, decoded.imm);
  }
  else if (strcmp(decoded.method_name, "hlt") == 0) {
  hlt();
@@ -448,68 +491,46 @@ void execute(inst_t decoded) {
  adds_imm(decoded.rn, decoded.rd, decoded.imm, decoded.shift);
  }
  else if (strcmp(decoded.method_name, "subs_er") == 0) {
- subs_ext_r(decoded.rm, decoded.rn, decoded.rd);
+ //printf("RM: %d, RN: %d, RD: %d\n", decoded.rm, decoded.rn, decoded.rd);
+ subs_er(decoded.rm, decoded.rn, decoded.rd);
  }
  else if (strcmp(decoded.method_name, "hlt") == 0) {
  hlt();
  }
-else if (strcmp(decoded.method_name, "eor") == 0) {
-    eor(decoded.rm, decoded.rn, decoded.rd);
+ else if (strcmp(decoded.method_name, "eor") == 0) {
+ eor(decoded.rm, decoded.rn, decoded.rd);
  }
  else if (strcmp(decoded.method_name, "orr") == 0) {
-    orr(decoded.rm, decoded.rn, decoded.rd);
+ orr(decoded.rm, decoded.rn, decoded.rd);
  }
-  else if (strcmp(decoded.method_name, "ands_sr") == 0) {
-    ands_sr(decoded.rm, decoded.rn, decoded.rd);
+ else if (strcmp(decoded.method_name, "ands_sr") == 0) {
+ ands_sr(decoded.rm, decoded.rn, decoded.rd);
  }
-   else if (strcmp(decoded.method_name, "b") == 0) {
-    b(decoded.imm);
+ else if (strcmp(decoded.method_name, "b") == 0) {
+ b(decoded.imm);
  }
-    else if (strcmp(decoded.method_name, "br") == 0) {
-    br(decoded.rn);
+ else if (strcmp(decoded.method_name, "br") == 0) {
+ br(decoded.rn);
  }
+ else if (strcmp(decoded.method_name, "bcond") == 0) {
+ bcond(decoded.imm, decoded.variant);
+ }
+ else if (strcmp(decoded.method_name, "lsl") == 0) {
+ lsl(decoded.rn, decoded.rd, decoded.imm);
+ }
+ else if (strcmp(decoded.method_name, "lsr") == 0) {
+ lsr(decoded.rn, decoded.rd, decoded.imm);
+ }
+
+ else if (strcmp(decoded.method_name, "cmp_er") == 0) {
+ cmp_ext_r(decoded.rn, decoded.rm);
+ }
+ else if (strcmp(decoded.method_name, "cmp_imm") == 0) {
+ cmp_imm(decoded.rn, decoded.imm, decoded.shift);
+ }
+ else if (strcmp(decoded.method_name, "ldur") == 0) {
+ ld(decoded.rt, decoded.rn, decoded.variant);
+ }
+
  NEXT_STATE.PC = CURRENT_STATE.PC += 4;
 }
-
-
-//INSTRUCCIONES PENDIENTES
-
-
-// uint32_t inst = 0xd4400000;
-
-// int main(void) {
-//     inst_t i_prueba = decode(inst);
-//     printf("Nombre del método: %s\n", i_prueba.method_name);
-//     printf("RM: %d\n", i_prueba.rm);
-//     printf("RN: %d\n", i_prueba.rn);
-//     printf("RD: %d\n", i_prueba.rd);
-//     printf("RT: %d\n", i_prueba.rt);
-//     printf("IMM: %d\n", i_prueba.imm);
-//     printf("OPTION: %d\n", i_prueba.option);
-//     printf("SHIFT: %d\n", i_prueba.shift);
-//     printf("VARIANT: %d\n", i_prueba.variant);
-
-//     return 0;
-// }
-
-/* 
-El estado del CPU está modelado por la struct CPU_STATE. En este struct hay un vector de 32 enteros de 64 bits cada uno. Cada
-posición del vector representa un registro y cada número representa el valor que toma su respectivo registro. Cuando una instrucción
-involucra guardar o modificar algo en un registro, debemos actualizar este vector con el nuevo valor que toma/n el/los registro/s.
-*/
-
-/*
-El program counter (PC) que también se encuentra en CPU_STATE se incrementa por su cuenta cuando se corre la función cylce()
-*/
-
-/*
-El flag_n se tiene que actualizar a 1 cuando el resultado de alguna instrucción es negativo y a 0 cuando no
-El flag_z se tiene que actualizar a 1 cuando el resultado de alguna instrucción es cero y a 0 cuando no
-*/
-
-/* 
-Preguntas:
-
-- Los registros del inst_t deberían ser de tipo uint64 o ints? Yo creo que no importa porque es algo interno. Los registros en sí están
-definidos en shell.c
-*/
