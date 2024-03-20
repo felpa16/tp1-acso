@@ -79,13 +79,14 @@ inst_t decode(uint32_t inst) {
  }
 
  // Check ANDS SHIFTED REG
- if (opcode == 0b0110001) {
+ if (opcode == 0b1101010) {
  uint32_t r_mask = 0b11111;
  decoded.rd = (inst & r_mask);
  decoded.rn = (inst & (r_mask << 5)) >> 5;
- uint32_t shift_mask = 0b1 << 22;
+ decoded.rm = (inst & (r_mask << 16)) >> 16;
+ uint32_t shift_mask = 0b11 << 22;
  decoded.shift = (inst & shift_mask) >> 22;
- uint32_t imm_mask = 0b111111111111 << 10;
+ uint32_t imm_mask = 0b111111 << 10;
  decoded.imm = (inst & imm_mask) >> 10;
  strcpy(decoded.method_name, "ands_sr");
  return decoded;
