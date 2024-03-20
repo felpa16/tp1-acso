@@ -141,7 +141,7 @@ inst_t decode(uint32_t inst) {
  uint32_t tail = inst & tail_mask;
  if (tail == 0b00000){
  uint32_t r_mask = 0b11111 << 5;
- decoded.rm = inst & r_mask;
+ decoded.rn = inst & r_mask;
  strcpy(decoded.method_name, "br");
  return decoded;
  }
@@ -215,6 +215,7 @@ inst_t decode(uint32_t inst) {
  // Caso optcode en bits 29-21
  uint32_t mask29_21 = 0b00111111111 << 21;
  opcode = (inst & mask29_21) >> 21;
+
  // Check LDUR/LDURB/LDURH operations
  if (opcode == 0b111000010) {
  uint32_t r_mask = 0b11111;
@@ -360,6 +361,73 @@ void subs_er(int rm, int rn, int rd) {
  NEXT_STATE.FLAG_Z = 0;}
 }
 
+void eor(int rm, int rn, int rd) {
+    NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] ^ CURRENT_STATE.REGS[rm];
+}
+void orr(int rm, int rn, int rd) {
+    NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] | CURRENT_STATE.REGS[rm];
+}
+void ands_sr(int rm, int rn, int rd) {
+ NEXT_STATE.REGS[rd] = (CURRENT_STATE.REGS[rm] & CURRENT_STATE.REGS[rn]); 
+ if (NEXT_STATE.REGS[rd] == 0) { 
+ NEXT_STATE.FLAG_Z = 1;
+ NEXT_STATE.FLAG_N = 0;
+ }
+ else if (NEXT_STATE.REGS[rd] < 0) { 
+ NEXT_STATE.FLAG_N = 1;
+ NEXT_STATE.FLAG_Z = 0;
+ }
+ else {
+ NEXT_STATE.FLAG_N = 0;
+ NEXT_STATE.FLAG_Z = 0;}
+}
+void b(int imm) {
+ NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2) ;
+}
+void br(int rn) {
+ NEXT_STATE.PC = rn;
+}
+void lsl(int rn, int rd, int imm) {
+    NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] << imm;
+}
+void lsr(int rn, int rd, int imm) {
+    NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] >> imm;
+}
+void bcond(int imm, int variant) {
+    // BEQ
+    if (variant == 0b0000){
+        if (CURRENT_STATE.FLAG_Z == 1){
+            NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
+        }
+    // BNE
+    } else if (variant == 0b0001){
+        if (CURRENT_STATE.FLAG_Z == 0){
+            NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
+        }
+    // BGT
+    } else if (variant == 0b1100){
+        if ((CURRENT_STATE.FLAG_Z == 0) && (CURRENT_STATE.FLAG_N == 0)){
+            NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
+        }
+     // BLT
+    } else if (variant == 0b1011){
+        if (CURRENT_STATE.FLAG_N == 1){
+            NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
+        }
+    // BGE
+    } else if (variant == 0b1010){
+        if (CURRENT_STATE.FLAG_N == 0){
+            NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
+        }
+    // BLE
+    } else if (variant == 0b1101){
+        if (!((CURRENT_STATE.FLAG_Z == 0) && (CURRENT_STATE.FLAG_N == 0))){
+            NEXT_STATE.PC = CURRENT_STATE.PC + (imm << 2); 
+        }
+    }
+    
+}
+
 void execute(inst_t decoded) {
  if (strcmp(decoded.method_name, "adds_er") == 0) {
  adds_ext_r(decoded.rm, decoded.option, decoded.imm, decoded.rn, decoded.rd);
@@ -385,8 +453,27 @@ void execute(inst_t decoded) {
  else if (strcmp(decoded.method_name, "hlt") == 0) {
  hlt();
  }
+else if (strcmp(decoded.method_name, "eor") == 0) {
+    eor(decoded.rm, decoded.rn, decoded.rd);
+ }
+ else if (strcmp(decoded.method_name, "orr") == 0) {
+    orr(decoded.rm, decoded.rn, decoded.rd);
+ }
+  else if (strcmp(decoded.method_name, "ands_sr") == 0) {
+    ands_sr(decoded.rm, decoded.rn, decoded.rd);
+ }
+   else if (strcmp(decoded.method_name, "b") == 0) {
+    b(decoded.imm);
+ }
+    else if (strcmp(decoded.method_name, "br") == 0) {
+    br(decoded.rn);
+ }
  NEXT_STATE.PC = CURRENT_STATE.PC += 4;
 }
+
+
+//INSTRUCCIONES PENDIENTES
+// B COND -> TODOS
 
 
 // uint32_t inst = 0xd4400000;
