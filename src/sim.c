@@ -258,6 +258,7 @@ inst_t decode(uint32_t inst) {
  // Caso optcode en bits 31-21
  uint32_t mask31_21 = 0b11111111111 << 21;
  opcode = (inst & mask31_21) >> 21;
+
  // HALT o HLT
  if (opcode == 0b11010100010) {
  uint32_t end_mask = 0b11111;
@@ -344,7 +345,7 @@ void adds_imm(int rn, int rd, int imm, int shift) {
  }
 }
 
-void adds_subs_r(int rm, int rn, int rd) {
+void subs_er(int rm, int rn, int rd) {
  NEXT_STATE.REGS[rd] = (CURRENT_STATE.REGS[rm] - CURRENT_STATE.REGS[rn]); // puede ser que no haya que shiftear nada
  if (NEXT_STATE.REGS[rd] == 0) { 
  NEXT_STATE.FLAG_Z = 1;
@@ -378,11 +379,9 @@ void execute(inst_t decoded) {
  else if (strcmp(decoded.method_name, "adds_imm") == 0) {
  adds_imm(decoded.rn, decoded.rd, decoded.imm, decoded.shift);
  }
- /*
  else if (strcmp(decoded.method_name, "subs_er") == 0) {
  subs_ext_r(decoded.rm, decoded.rn, decoded.rd);
  }
- */
  else if (strcmp(decoded.method_name, "hlt") == 0) {
  hlt();
  }
