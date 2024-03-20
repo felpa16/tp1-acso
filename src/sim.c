@@ -313,14 +313,14 @@ void st(int rt, int rn, int variant) {
  if (variant == 0b01) { // STURH (2 bytes)
  uint32_t hw_ld = (uint32_t) ((NEXT_STATE.REGS[rt] >> 48) << 48);
  uint32_t hw_mem = (uint32_t) ((mem_read_32(rn) >> 16) << 16);
- mem_write_32(rn, hw_ld | hw_mem); // no sé si estoy almacenando bien acá o si entra en juego little endian.
+ mem_write_32(rn, hw_ld | hw_mem); // no sé si estoy almacenando bien acá o si entra en juego little endian.// HAY QUE HACER 2 WRITES, PORQUE ESTAS GUARDANDO 64 BITS. PRIMERO LOS MAS SIGNIFIC Y DESPUES LOS MENOS
  }
  else if (variant == 0b00) { // STURB (1 byte)
  uint32_t hw_ld = (uint32_t) ((NEXT_STATE.REGS[rt] >> 56) << 56);
  uint32_t hw_mem = (uint32_t) ((mem_read_32(rn) >> 8) << 8);
  mem_write_32(rn, hw_ld | hw_mem);
  }
- else if (variant == 0b11 || 0b10) { // STUR (4 bytes)
+ else if (variant == 0b11 || variant == 0b10) { // STUR (4 bytes)
  uint32_t hw_ld = (uint32_t) NEXT_STATE.REGS[rt];
  mem_write_32(rn, hw_ld);
  }
@@ -388,7 +388,7 @@ void br(int rn) {
  NEXT_STATE.PC = rn;
 }
 void lsl(int rn, int rd, int imm) {
-    NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] << imm;
+    NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] << imm; // FIJARSE QUE EN EL MAIL DICEN QUE EL SHIFT EN REALIDAD ES 64 - IMMR ???
 }
 void lsr(int rn, int rd, int imm) {
     NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] >> imm;
@@ -473,7 +473,6 @@ else if (strcmp(decoded.method_name, "eor") == 0) {
 
 
 //INSTRUCCIONES PENDIENTES
-// B COND -> TODOS
 
 
 // uint32_t inst = 0xd4400000;
