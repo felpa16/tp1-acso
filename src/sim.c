@@ -192,8 +192,7 @@ inst_t decode(uint32_t inst) {
    }
 
    // Check ADD ER
-
-   if (opcode == 0b0001011) {
+   if (opcode == 0b0001010) {
       uint32_t r_mask = 0b11111;
       decoded.rd = (inst & r_mask);
       decoded.rn = (inst & (r_mask << 5)) >> 5;
